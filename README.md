@@ -20,7 +20,7 @@ To run this project, you need:
 ## How to run
 Clone this repository
 ```bash
-    https://github.com/camargoOzen/Mini-Blockchain
+    git clone https://github.com/camargoOzen/Mini-Blockchain
     cd Mini-Blockchaingit 
 ```
 Run the blockchain
