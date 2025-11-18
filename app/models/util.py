@@ -1,0 +1,32 @@
+import hashlib
+import json
+import base64
+import time 
+import ecdsa
+
+def timestamp() -> int:
+    return int(time.time())
+
+def to_json(obj) -> str:
+    return json.dumps(obj, indent=4, sort_keys=True)
+
+def sha256(data: bytes) -> bytes:
+    '''
+    Deterministic SHA256 hash from bytes
+    returns hash in bytes
+    '''
+    return hashlib.sha256(data).digest()
+
+def hash_dict(data: dict) -> str:
+    '''
+    Use sha256 hash for a dictionary
+    returns hash in hex string
+    '''
+    encoded = json.dumps(data, sort_keys=True).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+def b64encode(byte_string: bytes) -> str:
+    return base64.b64encode(byte_string).decode()
+
+def b64decode(string: str) -> bytes:
+    return base64.b64decode(string)
