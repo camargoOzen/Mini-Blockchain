@@ -4,7 +4,7 @@ from .util import timestamp
 
 class Blockchain:
 
-    difficlty = 1
+    difficlty = 4
 
     def __init__(self):
         self.unconfirmed_transactions = []
@@ -52,14 +52,24 @@ class Blockchain:
 
         If a dict is provided, convert it to a Transaction with `Transaction.from_dict`.
         The method verifies the signature before adding to unconfirmed transactions.
+        Supports coinbase/faucet transactions (no sender) which skip signature verification.
         Returns True on success, False on invalid input or failed verification.
         """
-        # Convert dict payloads to Transaction objects
+        # Check if this is a coinbase/faucet transaction (no sender)
         if isinstance(transaction, dict):
+            sender = transaction.get("sender_address")
+            if sender is None or sender == "COINBASE" or sender == "FAUCET":
+                # For coinbase transactions, just add directly
+                self.unconfirmed_transactions.append(transaction)
+                return True
+            
+            # Convert dict payloads to Transaction objects
             try:
                 veryfy_tx = Transaction.from_dict(transaction)
             except Exception:
                 return False
+        else:
+            veryfy_tx = transaction
 
         # Must be a Transaction now
         if not isinstance(veryfy_tx, Transaction):
@@ -75,14 +85,34 @@ class Blockchain:
         self.unconfirmed_transactions.append(transaction)
         return True
 
-    def mine(self):
-        if not self.unconfirmed_transactions:
+    def mine(self, miner_address=None, mining_reward=50):
+        """Mine pending transactions into a new block.
+        
+        Args:
+            miner_address: Address to receive mining reward (optional)
+            mining_reward: Amount of coins to reward the miner (default 50)
+        """
+        if not self.unconfirmed_transactions and not miner_address:
             return False
+        
+        # Create coinbase transaction for mining reward
+        if miner_address:
+            coinbase_transaction = {
+                "sender_address": "COINBASE",
+                "sender_pubkey": None,
+                "receiver_address": miner_address,
+                "amount": mining_reward,
+                "signature": None
+            }
+            # Prepend coinbase transaction to the list
+            transactions_to_mine = [coinbase_transaction] + self.unconfirmed_transactions
+        else:
+            transactions_to_mine = self.unconfirmed_transactions
         
         last_block = self.last_block
 
         new_block = Block(index=last_block.index+1,
-                                transactions=self.unconfirmed_transactions,
+                                transactions=transactions_to_mine,
                                 previous_hash=last_block.hash)
         
         proof = self.proof_of_work(new_block)

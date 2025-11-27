@@ -3,9 +3,15 @@ import hashlib
 from .util import sha256, b64encode
 
 class Wallet:
-    def __init__(self):
-        self.private_key = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1)
+    def __init__(self, private_key_pem=None):
+        if private_key_pem:
+            self.private_key = ecdsa.SigningKey.from_pem(private_key_pem)
+        else:
+            self.private_key = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1)
         self.public_key = self.private_key.get_verifying_key()
+
+    def to_pem(self):
+        return self.private_key.to_pem().decode()
     
     @property
     def get_address(self) -> str:
