@@ -108,16 +108,43 @@ def create_transaction():
             if field not in data:
                 return jsonify({"success": False, "error": f"Missing field: {field}"}), 400
         
+        sender_address = data["sender_address"]
+        amount = data["amount"]
+        
+        # Check sender balance
+        balance = 0
+        for block in blockchain.chain:
+            for tx in block.transactions:
+                if isinstance(tx, dict):
+                    if tx.get("receiver_address") == sender_address:
+                        balance += tx.get("amount", 0)
+                    if tx.get("sender_address") == sender_address:
+                        balance -= tx.get("amount", 0)
+        
+        # Check pending transactions
+        for tx in blockchain.unconfirmed_transactions:
+            if isinstance(tx, dict):
+                if tx.get("receiver_address") == sender_address:
+                    balance += tx.get("amount", 0)
+                if tx.get("sender_address") == sender_address:
+                    balance -= tx.get("amount", 0)
+        
+        # Validate sufficient balance
+        if balance < amount:
+            return jsonify({
+                "success": False,
+                "error": f"Insufficient balance. Available: {balance} coins, Required: {amount} coins"
+            }), 400
+        
         # Create transaction
         transaction = Transaction(
-            sender_address=data["sender_address"],
+            sender_address=sender_address,
             sender_pubkey=data["sender_pubkey"],
             receiver_address=data["receiver_address"],
-            amount=data["amount"]
+            amount=amount
         )
         
         # Sign transaction if we have the wallet
-        sender_address = data["sender_address"]
         if sender_address in wallets:
             transaction.sign(wallets[sender_address])
         elif "signature" in data:
@@ -157,14 +184,16 @@ def mine_block():
         result = blockchain.mine(miner_address=miner_address, mining_reward=50)
         
         if result:
-            message = f"Block #{result} mined successfully"
+            message = f"Block #{result['index']} mined successfully"
             if miner_address:
                 message += f" - Miner rewarded 50 coins"
             
             return jsonify({
                 "success": True,
                 "message": message,
-                "block_index": result,
+                "block_index": result['index'],
+                "mining_time": result['mining_time'],
+                "difficulty": result['difficulty'],
                 "mining_reward": 50 if miner_address else 0
             }), 200
         else:
@@ -232,7 +261,9 @@ def get_blockchain():
                 "transactions": block.transactions,
                 "nonce": block.nonce,
                 "hash": block.hash,
-                "previous_hash": block.previous_hash
+                "previous_hash": block.previous_hash,
+                "difficulty": block.difficulty if hasattr(block, 'difficulty') else 4,
+                "mining_time": block.mining_time if hasattr(block, 'mining_time') else 0
             })
         
         return jsonify({
@@ -252,6 +283,31 @@ def get_pending_transactions():
             "success": True,
             "count": len(blockchain.unconfirmed_transactions),
             "transactions": blockchain.unconfirmed_transactions
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@api_bp.route("/mining/stats", methods=["GET"])
+def get_mining_stats():
+    """Get current mining statistics."""
+    try:
+        current_difficulty = blockchain.get_difficulty()
+        total_blocks = len(blockchain.chain)
+        blocks_until_next = blockchain.blocks_until_next_difficulty()
+        
+        # Calculate average mining time for last 10 blocks
+        recent_blocks = blockchain.chain[-10:] if len(blockchain.chain) > 10 else blockchain.chain[1:]  # Skip genesis
+        mining_times = [b.mining_time for b in recent_blocks if hasattr(b, 'mining_time') and b.mining_time is not None]
+        avg_mining_time = sum(mining_times) / len(mining_times) if mining_times else 0
+        
+        return jsonify({
+            "success": True,
+            "current_difficulty": current_difficulty,
+            "total_blocks": total_blocks,
+            "blocks_until_next_difficulty": blocks_until_next,
+            "average_mining_time": round(avg_mining_time, 2),
+            "difficulty_increment_interval": blockchain.DIFFICULTY_INCREMENT_INTERVAL
         }), 200
         
     except Exception as e:

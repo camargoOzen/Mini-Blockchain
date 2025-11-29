@@ -1,5 +1,5 @@
 import ecdsa
-import hashlib
+from .hash_functions import ripemd160
 from .util import sha256, b64encode
 
 class Wallet:
@@ -16,7 +16,7 @@ class Wallet:
     @property
     def get_address(self) -> str:
         sha = sha256(self.public_key.to_string())
-        ripemd = hashlib.new('ripemd160', sha).digest()
+        ripemd = ripemd160(sha)
         return ripemd.hex()
 
     def sign(self, message: bytes) -> str:

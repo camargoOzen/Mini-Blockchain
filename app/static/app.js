@@ -20,11 +20,13 @@ document.addEventListener('DOMContentLoaded', () => {
     renderWallets();
     updateBlockchain();
     updatePendingTransactions();
+    loadMiningStats();
 
     // Auto-refresh every 5 seconds
     setInterval(() => {
         updateBlockchain();
         updatePendingTransactions();
+        loadMiningStats();
     }, 5000);
 });
 
@@ -192,6 +194,24 @@ async function sendTransaction(e) {
 
     const sender = wallets[senderIndex];
 
+    // Check sender's balance before sending transaction
+    try {
+        const balanceResponse = await fetch(`/api/wallet/balance/${sender.address}`);
+        const balanceData = await balanceResponse.json();
+
+        if (balanceData.success) {
+            const currentBalance = balanceData.balance;
+
+            if (currentBalance < amount) {
+                showToast(`Insufficient balance! You have ${currentBalance} coins but need ${amount} coins.`, 'error');
+                return;
+            }
+        }
+    } catch (error) {
+        console.error('Error checking balance:', error);
+        // Continue with transaction attempt even if balance check fails
+    }
+
     try {
         const response = await fetch('/api/transaction', {
             method: 'POST',
@@ -236,12 +256,14 @@ async function mineBlock() {
         const data = await response.json();
 
         if (data.success) {
-            miningStatus.textContent = data.message;
+            const timeStr = formatMiningTime(data.mining_time);
+            miningStatus.textContent = `${data.message} (Mined in ${timeStr} at difficulty ${data.difficulty})`;
             miningStatus.className = 'status-message status-success';
-            showToast('Block mined successfully! ⛏️');
+            showToast(`Block mined in ${timeStr}! ⛏️`);
 
             updateBlockchain();
             updatePendingTransactions();
+            loadMiningStats();
 
             // Update balances
             wallets.forEach(wallet => updateBalance(wallet.address));
@@ -278,6 +300,9 @@ async function updateBlockchain() {
             blockchain.innerHTML = data.chain.reverse().map(block => {
                 const date = new Date(block.timestamp * 1000);
                 const txCount = Array.isArray(block.transactions) ? block.transactions.length : 0;
+                const difficulty = block.difficulty || 4;
+                const miningTime = block.mining_time || 0;
+                const timeStr = formatMiningTime(miningTime);
 
                 return `
                     <div class="block">
@@ -288,6 +313,8 @@ async function updateBlockchain() {
                         <div class="block-info">Hash: <span class="block-hash">${block.hash || 'Pending...'}</span></div>
                         <div class="block-info">Previous Hash: ${block.previous_hash}</div>
                         <div class="block-info">Nonce: ${block.nonce}</div>
+                        <div class="block-info">Difficulty: <span class="difficulty-badge">${'⭐'.repeat(difficulty)}</span> ${difficulty}</div>
+                        <div class="block-info">Mining Time: ${timeStr}</div>
                         <div class="block-info">Transactions: ${txCount}</div>
                         ${txCount > 0 ? `
                             <div style="margin-top: 1rem;">
@@ -345,6 +372,56 @@ async function updatePendingTransactions() {
     } catch (error) {
         console.error('Error fetching pending transactions:', error);
     }
+}
+
+// Show Toast Notification
+function showToast(message, type = 'success') {
+    toast.textContent = message;
+    toast.style.background = type === 'error'
+        ? 'linear-gradient(135deg, #f44336 0%, #e91e63 100%)'
+        : 'linear-gradient(135deg, #56ab2f 0%, #a8e063 100%)';
+    toast.style.color = 'white';
+    toast.classList.add('show');
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+// Load Mining Stats
+async function loadMiningStats() {
+    try {
+        const response = await fetch('/api/mining/stats');
+        const data = await response.json();
+
+        if (data.success) {
+            // Update difficulty display
+            document.getElementById('currentDifficulty').textContent = data.current_difficulty;
+
+            // Update average mining time
+            const avgTimeStr = formatMiningTime(data.average_mining_time);
+            document.getElementById('avgMiningTime').textContent = avgTimeStr;
+
+            // Update blocks remaining
+            document.getElementById('blocksRemaining').textContent = data.blocks_until_next_difficulty;
+
+            // Update progress bar
+            const progress = ((data.difficulty_increment_interval - data.blocks_until_next_difficulty) / data.difficulty_increment_interval) * 100;
+            document.getElementById('difficultyProgressBar').style.width = progress + '%';
+        }
+    } catch (error) {
+        console.error('Error fetching mining stats:', error);
+    }
+}
+
+// Format mining time for display
+function formatMiningTime(seconds) {
+    if (seconds === 0 || seconds === null) return '0s';
+    if (seconds < 1) return (seconds * 1000).toFixed(0) + 'ms';
+    if (seconds < 60) return seconds.toFixed(2) + 's';
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${minutes}m ${secs}s`;
 }
 
 // Show Toast Notification

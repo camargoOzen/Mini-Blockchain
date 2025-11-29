@@ -49,6 +49,35 @@
     <section class="card">
         <h2>⛏️ Mining</h2>
 
+        <!-- Mining Stats -->
+        <div class="mining-stats">
+            <div class="stat-card">
+                <span class="stat-icon">🎯</span>
+                <div class="stat-content">
+                    <span class="stat-label">Current Difficulty</span>
+                    <span id="currentDifficulty" class="stat-value-large">4</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">⏱️</span>
+                <div class="stat-content">
+                    <span class="stat-label">Avg Mining Time</span>
+                    <span id="avgMiningTime" class="stat-value-large">0s</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Difficulty Progress -->
+        <div class="difficulty-progress">
+            <div class="progress-header">
+                <span class="progress-label">Blocks until difficulty increase</span>
+                <span id="blocksRemaining" class="progress-value">1000</span>
+            </div>
+            <div class="progress-bar-container">
+                <div id="difficultyProgressBar" class="progress-bar" style="width: 0%"></div>
+            </div>
+        </div>
+
         <div class="form-group">
             <label for="minerSelect">Miner Wallet (optional - receives 50 coins reward)</label>
             <select id="minerSelect">

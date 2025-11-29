@@ -1,6 +1,6 @@
 import ecdsa
-import hashlib
 import json
+from .hash_functions import ripemd160
 from .util import hash_dict, b64decode, sha256
 
 class Transaction:
@@ -44,8 +44,8 @@ class Transaction:
 
             # Recompute address from provided public key and compare
             sha = sha256(pubkey_bytes)
-            ripemd = hashlib.new('ripemd160', sha).digest()
-            if ripemd.hex() != self.sender_address:
+            ripemd_hash = ripemd160(sha)
+            if ripemd_hash.hex() != self.sender_address:
                 return False
 
             signature = b64decode(self.signature)

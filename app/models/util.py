@@ -1,4 +1,4 @@
-import hashlib
+from .hash_functions import sha256 as custom_sha256
 import json
 import base64
 import time 
@@ -12,10 +12,10 @@ def to_json(obj) -> str:
 
 def sha256(data: bytes) -> bytes:
     '''
-    Deterministic SHA256 hash from bytes
+    Deterministic SHA256 hash from bytes using custom implementation
     returns hash in bytes
     '''
-    return hashlib.sha256(data).digest()
+    return custom_sha256(data)
 
 def hash_dict(data: dict) -> str:
     '''
@@ -23,7 +23,7 @@ def hash_dict(data: dict) -> str:
     returns hash in hex string
     '''
     encoded = json.dumps(data, sort_keys=True).encode()
-    return hashlib.sha256(encoded).hexdigest()
+    return custom_sha256(encoded).hex()
 
 def b64encode(byte_string: bytes) -> str:
     return base64.b64encode(byte_string).decode()

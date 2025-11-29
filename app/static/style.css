@@ -368,8 +368,96 @@ label {}
         grid-template-columns: 1fr;
     }
 }
+
 /* Fix for dropdown options visibility */
 select option {
     background-color: #2d1b4e;
     color: #ffffff;
+}
+
+/* Mining Stats Styles */
+.mining-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    background: rgba(102, 126, 234, 0.15);
+    border-color: rgba(102, 126, 234, 0.5);
+    transform: translateY(-2px);
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+}
+
+.stat-content {
+    flex: 1;
+}
+
+.stat-value-large {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #667eea;
+    line-height: 1;
+}
+
+/* Difficulty Progress Bar */
+.difficulty-progress {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.progress-label {
+    font-size: 0.9rem;
+    color: #c0c0c0;
+}
+
+.progress-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #a8e063;
+}
+
+.progress-bar-container {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    height: 12px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    transition: width 0.5s ease;
+}
+
+/* Difficulty Badge */
+.difficulty-badge {
+    color: #ffd700;
+    font-size: 0.9rem;
 }

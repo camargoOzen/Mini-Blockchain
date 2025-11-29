@@ -1,28 +1,46 @@
 from .block import Block
 from .transaction import Transaction
 from .util import timestamp
+import time
+import json
+import os
 
 class Blockchain:
 
-    difficlty = 4
+    BASE_DIFFICULTY = 3
+    DIFFICULTY_INCREMENT_INTERVAL = 1000  # Increase difficulty every 1000 blocks
+    BLOCKCHAIN_FILE = "blockchain.json"
 
     def __init__(self):
         self.unconfirmed_transactions = []
         self.chain = []
-        self.create_genesis_block()
+        # Try to load existing blockchain, otherwise create genesis
+        if not self.load_from_disk():
+            self.create_genesis_block()
 
     def create_genesis_block(self):
-        genesis_block = Block(0, [], "0")
+        genesis_block = Block(0, [], "0", difficulty=self.BASE_DIFFICULTY, mining_time=0)
         genesis_block.hash = genesis_block.compute_hash()
         self.chain.append(genesis_block)
+        self.save_to_disk() # Save genesis block immediately
 
     @property
     def last_block(self):
         return self.chain[-1]
     
+    def get_difficulty(self):
+        """Calculate current difficulty based on blockchain length"""
+        total_blocks = len(self.chain)
+        return self.BASE_DIFFICULTY + (total_blocks // self.DIFFICULTY_INCREMENT_INTERVAL)
+    
+    def blocks_until_next_difficulty(self):
+        """Calculate how many blocks until next difficulty increase"""
+        total_blocks = len(self.chain)
+        return self.DIFFICULTY_INCREMENT_INTERVAL - (total_blocks % self.DIFFICULTY_INCREMENT_INTERVAL)
+    
     @staticmethod
-    def is_valid_proof(block, block_hash):
-        return (block_hash.startswith('0' * Blockchain.difficlty) and block_hash == block.compute_hash())
+    def is_valid_proof(block, block_hash, difficulty):
+        return (block_hash.startswith('0' * difficulty) and block_hash == block.compute_hash())
     
     def add_block(self, block, proof):
         previous_hash = self.last_block.hash
@@ -30,20 +48,28 @@ class Blockchain:
         if previous_hash != block.previous_hash:
             return False
         
-        if not Blockchain.is_valid_proof(block, proof):
+        if not Blockchain.is_valid_proof(block, proof, block.difficulty):
             return False
         
         block.hash = proof
         self.chain.append(block)
+        self.save_to_disk() # Save blockchain after adding a new block
         return True
     
-    def proof_of_work(self,block):
+    def proof_of_work(self, block):
+        """Perform proof of work and track mining time"""
         block.nonce = 0
+        difficulty = block.difficulty
         
+        start_time = time.time()
         computed_hash = block.compute_hash()
-        while not computed_hash.startswith('0' * Blockchain.difficlty):
+        while not computed_hash.startswith('0' * difficulty):
             block.nonce += 1
             computed_hash = block.compute_hash()
+        end_time = time.time()
+        
+        # Store mining time in seconds (rounded to 2 decimals)
+        block.mining_time = round(end_time - start_time, 2)
         
         return computed_hash
 
@@ -91,6 +117,9 @@ class Blockchain:
         Args:
             miner_address: Address to receive mining reward (optional)
             mining_reward: Amount of coins to reward the miner (default 50)
+        
+        Returns:
+            dict with block index and mining time, or False if mining failed
         """
         if not self.unconfirmed_transactions and not miner_address:
             return False
@@ -110,12 +139,75 @@ class Blockchain:
             transactions_to_mine = self.unconfirmed_transactions
         
         last_block = self.last_block
+        current_difficulty = self.get_difficulty()
 
         new_block = Block(index=last_block.index+1,
                                 transactions=transactions_to_mine,
-                                previous_hash=last_block.hash)
+                                previous_hash=last_block.hash,
+                                difficulty=current_difficulty)
         
         proof = self.proof_of_work(new_block)
         self.add_block(new_block, proof)
         self.unconfirmed_transactions = []
-        return new_block.index
+        
+        # Save blockchain to disk after mining
+        self.save_to_disk()
+        
+        return {
+            'index': new_block.index,
+            'mining_time': new_block.mining_time,
+            'difficulty': new_block.difficulty
+        }
+
+    def save_to_disk(self):
+        """Saves the current blockchain to a JSON file."""
+        blockchain_data = []
+        for block in self.chain:
+            # Convert Block object to a dictionary
+            block_data = {
+                "index": block.index,
+                "transactions": [tx.to_dict() if isinstance(tx, Transaction) else tx for tx in block.transactions],
+                "previous_hash": block.previous_hash,
+                "timestamp": block.timestamp,
+                "nonce": block.nonce,
+                "hash": block.hash,
+                "difficulty": block.difficulty,
+                "mining_time": block.mining_time
+            }
+            blockchain_data.append(block_data)
+        
+        with open(self.BLOCKCHAIN_FILE, 'w') as f:
+            json.dump(blockchain_data, f, indent=4)
+
+    def load_from_disk(self):
+        """Loads the blockchain from a JSON file."""
+        if not os.path.exists(self.BLOCKCHAIN_FILE):
+            return False
+        
+        with open(self.BLOCKCHAIN_FILE, 'r') as f:
+            blockchain_data = json.load(f)
+        
+        self.chain = []
+        for block_data in blockchain_data:
+            # Reconstruct Transaction objects from dictionaries
+            transactions = []
+            for tx_data in block_data["transactions"]:
+                # Keep transactions as dictionaries for compatibility with API and balance checks
+                transactions.append(tx_data)
+            
+            # Reconstruct Block object
+            block = Block(
+                index=block_data["index"],
+                transactions=transactions,
+                previous_hash=block_data["previous_hash"],
+                nonce=block_data["nonce"],
+                difficulty=block_data["difficulty"],
+                mining_time=block_data["mining_time"]
+            )
+            # Manually set timestamp and hash (which aren't set in constructor)
+            block.timestamp = block_data["timestamp"]
+            block.hash = block_data["hash"]
+            self.chain.append(block)
+        
+        print(f"Loaded {len(self.chain)} blocks from disk")
+        return True
