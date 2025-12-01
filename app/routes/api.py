@@ -1,43 +1,66 @@
-from flask import Blueprint, jsonify, request
-from app.models.blockchain import Blockchain
+from flask import Blueprint, jsonify, request, current_app
 from app.models.wallet import Wallet
 from app.models.transaction import Transaction
+from app.instance import blockchain, wallets, peers
+from app.services.save_service import save_wallets, save_blockchain
 import base64
+import requests
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
-# Global blockchain instance
-blockchain = Blockchain()
+def get_port():
+    return current_app.config.get("NODE_PORT")
 
-# In-memory wallet storage for demo purposes
-import json
-import os
-
-WALLETS_FILE = "wallets.json"
-
-def load_wallets():
-    loaded_wallets = {}
-    if os.path.exists(WALLETS_FILE):
-        try:
-            with open(WALLETS_FILE, "r") as f:
-                data = json.load(f)
-                for address, pem in data.items():
-                    loaded_wallets[address] = Wallet(private_key_pem=pem)
-            print(f"Loaded {len(loaded_wallets)} wallets from disk")
-        except Exception as e:
-            print(f"Error loading wallets: {e}")
-    return loaded_wallets
-
-def save_wallets(wallets_dict):
+def broadcast_unconfirmed_transactions(uncon_tx):
+    current_port = str(get_port())
     try:
-        data = {addr: wallet.to_pem() for addr, wallet in wallets_dict.items()}
-        with open(WALLETS_FILE, "w") as f:
-            json.dump(data, f)
-    except Exception as e:
-        print(f"Error saving wallets: {e}")
+        self_url = f"http://localhost:{current_port}"
+    except Exception:
+        self_url = None
+    # Accept either a single transaction or an iterable of transactions
+    if isinstance(uncon_tx, (dict, Transaction)):
+        tx_list = [uncon_tx]
+    else:
+        tx_list = list(uncon_tx)
 
-# Load wallets on startup
-wallets = load_wallets()
+    # Normalize payload: ensure transactions are JSON-serializable dicts
+    payload = []
+    for tx in tx_list:
+        if isinstance(tx, dict):
+            payload.append(tx)
+        elif hasattr(tx, 'to_dict') and callable(tx.to_dict):
+            payload.append(tx.to_dict())
+        else:
+            payload.append(tx)
+
+    print(payload)
+
+    for peer in peers:
+        if self_url and peer == self_url:
+            continue
+        try:
+            requests.post(f"{peer}/update/uncon_tx", json={"un_tx": payload}, timeout=3)
+            print(f"Transaction(s) successfully sent to {peer}")
+        except requests.RequestException as e:
+            print(f"Peer {peer} unreachable: {e}")
+
+def broadcast_block(new_block):
+    current_port = str(get_port())
+    try:
+        self_url = f"http://localhost:{current_port}"
+    except Exception:
+        self_url = None
+
+    block_payload = new_block if isinstance(new_block, dict) else (new_block.to_dict() if hasattr(new_block, 'to_dict') else new_block)
+
+    for peer in peers:
+        if self_url and peer == self_url:
+            continue
+        try:
+            requests.post(f"{peer}/update/block", json={"block": block_payload}, timeout=3)
+            print(f"Block successfully sent to {peer}")
+        except requests.RequestException as e:
+            print(f"Peer {peer} unreachable: {e}")
 
 @api_bp.route("/wallet/create", methods=["POST"])
 def create_wallet():
@@ -49,7 +72,7 @@ def create_wallet():
         
         # Store wallet in memory and save to disk
         wallets[address] = wallet
-        save_wallets(wallets)
+        save_wallets(str(get_port()),wallets)
         
         return jsonify({
             "success": True,
@@ -65,7 +88,7 @@ def delete_wallet(address):
     try:
         if address in wallets:
             del wallets[address]
-            save_wallets(wallets)
+            save_wallets(str(get_port()),wallets)
             return jsonify({"success": True, "message": "Wallet deleted successfully"}), 200
         else:
             # Idempotent response: if it's already gone, that's a success for the client
@@ -160,6 +183,7 @@ def create_transaction():
         success = blockchain.add_new_transaction(transaction.to_dict())
         
         if success:
+            broadcast_unconfirmed_transactions(transaction.to_dict())
             return jsonify({
                 "success": True,
                 "message": "Transaction added to pending pool",
@@ -177,6 +201,7 @@ def create_transaction():
 @api_bp.route("/mine", methods=["POST"])
 def mine_block():
     """Mine pending transactions into a new block with optional mining reward."""
+    port = get_port()
     try:
         data = request.get_json() or {}
         miner_address = data.get("miner_address")
@@ -187,7 +212,8 @@ def mine_block():
             message = f"Block #{result['index']} mined successfully"
             if miner_address:
                 message += f" - Miner rewarded 50 coins"
-            
+            save_blockchain(port)
+            broadcast_block(blockchain.last_block.to_dict())
             return jsonify({
                 "success": True,
                 "message": message,
@@ -233,6 +259,7 @@ def request_faucet():
         success = blockchain.add_new_transaction(faucet_transaction)
         
         if success:
+            broadcast_unconfirmed_transactions(faucet_transaction)
             return jsonify({
                 "success": True,
                 "message": f"Faucet request successful! {faucet_amount} coins will be available after mining",
