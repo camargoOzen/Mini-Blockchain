@@ -1,3 +1,6 @@
+# Data directory stores blockchain and wallets information for each peer
+data/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
