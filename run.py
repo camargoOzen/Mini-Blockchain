@@ -29,4 +29,4 @@ if __name__ == "__main__":
         blockchain = Blockchain()
         save_blockchain(PORT)
         
-    app.run(port=PORT, debug=True)
+    app.run(port=PORT)
