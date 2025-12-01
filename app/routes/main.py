@@ -172,5 +172,7 @@ def get_peers():
 @main_bp.route("/")
 def home():
     peers.add(f"http://localhost:{get_port()}")
-    connect_to_bootstrap()
+    bootstrap_url = f"http://localhost:{get_bootstrap_port()}"
+    if bootstrap_url not in peers:
+        connect_to_bootstrap()
     return render_template("index.html")
