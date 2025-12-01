@@ -704,7 +704,7 @@ if __name__ == "__main__":
         print("Blockchain cargada desde disco")
     
     # Iniciar servidor Flask
-    app.run(port=PORT, debug=True)
+    app.run(port=PORT)
 ```
 
 **Uso**: `python run.py 5000`
@@ -715,7 +715,14 @@ if __name__ == "__main__":
 
 ### 6.1 Creación de Carteras
 
-![wallet_creation]
+Antes de la creación de la cartera, para crearla se presiona el botón **Create new wallet**:
+![wallet_pre_creation](/screenshots/wallet_1.PNG)
+
+Una vez creada aparece automaticamente la cartera:
+![wallet_creation](/screenshots/wallet_2.PNG)
+
+A su vez se guarda la información de la cartera, direccion y llave publica, en un archivo JSON:
+![wallet_json](/screenshots/wallet_3.PNG)
 
 **Funcionalidad demostrada**:
 - Generación de claves ECDSA
@@ -726,6 +733,11 @@ if __name__ == "__main__":
 ### 6.2 Solicitud de Faucet
 
 **Test realizado**:
+
+Al crear una transacción ***Fauset*** aparece automáticamente en la sección de transacciones pendientes.
+
+![fauset_transaction](/screenshots/faucet_1.PNG)
+
 ```
 POST /api/faucet
 Body: {"address": "a1b2c3d4..."}
@@ -743,6 +755,18 @@ Response:
 
 ### 6.3 Envío de Transacciones
 
+Carteras A y B.
+![wallets_a_b](/screenshots/transaction_1.PNG)
+
+Transacción de 25 monedas desde la cartera A a la B.
+![transaction_a_b](/screenshots/transaction_2.PNG)
+
+Transacción creada en la sección de transacciones pendientes.
+![transaction_a_b_created](/screenshots/transaction_3.PNG)
+
+Bloque minado con la transacción de 25 monedas desde la cartera A a la B
+![mined_block](/screenshots/transaction_4.PNG)
+
 **Test realizado**:
 1. Crear dos carteras (A y B)
 2. Solicitar faucet para cartera A
@@ -750,11 +774,18 @@ Response:
 4. Enviar 25 monedas de A a B
 5. Verificar transacción pendiente
 
-**Resultado**: ✅ Transacción firmada y validada correctamente
+**Resultado**: Transacción firmada y validada correctamente
 
 ### 6.4 Minería de Bloques
 
 **Test de minería**:
+
+Para minar, se presiona el botón **Mine Block**.
+![minig_block](/screenshots/block_1.PNG)
+
+Una vez minado se agrega a la blockchain.
+![block_blockchain](/screenshots/block_2.PNG)
+
 ```
 Dificultad: 3 zeros
 Tiempo promedio: ~0.52 segundos
@@ -786,9 +817,12 @@ Response:
 }
 ```
 
-**Mensaje en UI**: "✅ Blockchain is valid! All 1 blocks verified."
+**Mensaje en UI**: "Blockchain is valid! All 1 blocks verified."
 
 ### 6.6 Persistencia de Datos
+
+Persistencia de las carteras y la blockchain en archivos JSON. (Se puede ver los bloques minados hasta el momento).
+![persistence](/screenshots/persistence_1.PNG)
 
 **Test de persistencia**:
 1. Crear 3 carteras
@@ -800,7 +834,7 @@ Response:
    - Blockchain tiene todos los bloques
    - Balances son correctos
 
-**Resultado**: ✅ Datos persistidos y recuperados correctamente
+**Resultado**: Datos persistidos y recuperados correctamente
 
 ### 6.7 Cálculo de Balances
 
@@ -808,17 +842,16 @@ Response:
 ```
 Cartera A:
   + 100 (faucet)
-  + 50 (minería bloque 1)
   - 25 (transferencia a B)
-  + 50 (minería bloque 2)
-  = 175 monedas
+  = 75 monedas
 
 Cartera B:
   + 25 (recibido de A)
   = 25 monedas
 ```
 
-**Verificación en UI**: ✅ Balances coinciden
+**Verificación en UI**: Balances coinciden
+![balance](/screenshots/balance_1.PNG)
 
 ### 6.8 Algoritmos Criptográficos
 
@@ -828,7 +861,7 @@ Cartera B:
 input = b"abc"
 expected = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
 result = sha256(input).hex()
-assert result == expected  # ✅ PASS
+assert result == expected  #PASS
 ```
 
 **Verificación RIPEMD-160**:
@@ -837,7 +870,7 @@ assert result == expected  # ✅ PASS
 input = b"abc"
 expected = "8eb208f7e05d987a9b044a8e98c6b087f15a0bfc"
 result = ripemd160(input).hex()
-assert result == expected  # ✅ PASS
+assert result == expected  #PASS
 ```
 
 **Evidencia**: Implementaciones correctas según estándares oficiales
@@ -860,7 +893,7 @@ tx.sign(wallet)
 
 # Verificar firma
 is_valid = tx.verify_signature()
-assert is_valid == True  # ✅ PASS
+assert is_valid == True  #PASS
 ```
 
 **Resultado**: Firmas ECDSA funcionan correctamente
@@ -876,7 +909,21 @@ Bloque 2000-2999: Dificultad = 5
 
 **Fórmula**: `difficulty = 3 + (total_blocks // 1000)`
 
-**Resultado**: ✅ Dificultad se ajusta automáticamente
+**Resultado**: Dificultad se ajusta automáticamente
+
+### 6.11 Red P2P
+
+Crear un nuevo nodo en el *Puerto 5001*.
+![p2p_nodo_5001](/screenshots/p2p_1.PNG)
+
+El nodo en el *Puerto 5001* se sicroniza con el nodo en el *Puerto 5000* y descarga la blockchain existente.
+![p2p_blockchain](/screenshots/p2p_2.PNG)
+
+Se gurada en disco la copia del blockchain en la carpeta del *Puerto 5001*.
+
+![p2p_disk](/screenshots/p2p_3.PNG)
+
+**Resultado**: Creación de nuevos nodos y sincronización del blockchain
 
 ---
 
