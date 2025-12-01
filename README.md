@@ -9,7 +9,8 @@ This project is a minimal, fully functional blockchain implementation using pyth
     - Previous hash
 - **SHA-256 cryptographic hashing**
 - **Blockchain validation**
-- **Minimal command-line interface**
+- **Web interface**
+- **Peer to Peer network**
 
 ## Requirements
 
@@ -23,8 +24,15 @@ Clone this repository
     git clone https://github.com/camargoOzen/Mini-Blockchain
     cd Mini-Blockchaingit 
 ```
-Run the blockchain
-
+Install the dependencies.
 ```bash
-    python main.py 
+    pip install -r requirements.txt 
+```
+Run the blockchain in port 5000.
+```bash
+    python run.py 5000 
+```
+To create multiple custom nodes, open a new terminal and run.
+```bash
+    python run.py 5001 5000 
 ```
