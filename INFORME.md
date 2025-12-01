@@ -914,6 +914,7 @@ Bloque 2000-2999: Dificultad = 5
 ### 6.11 Red P2P
 
 Crear un nuevo nodo en el *Puerto 5001*.
+
 ![p2p_nodo_5001](/screenshots/p2p_1.PNG)
 
 El nodo en el *Puerto 5001* se sicroniza con el nodo en el *Puerto 5000* y descarga la blockchain existente.
