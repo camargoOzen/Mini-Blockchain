@@ -2,27 +2,22 @@ from .block import Block
 from .transaction import Transaction
 from .util import timestamp
 import time
-import json
-import os
 
 class Blockchain:
 
     BASE_DIFFICULTY = 3
     DIFFICULTY_INCREMENT_INTERVAL = 1000  # Increase difficulty every 1000 blocks
-    BLOCKCHAIN_FILE = "blockchain.json"
 
     def __init__(self):
         self.unconfirmed_transactions = []
         self.chain = []
         # Try to load existing blockchain, otherwise create genesis
-        if not self.load_from_disk():
-            self.create_genesis_block()
+        self.create_genesis_block()
 
     def create_genesis_block(self):
         genesis_block = Block(0, [], "0", difficulty=self.BASE_DIFFICULTY, mining_time=0)
         genesis_block.hash = genesis_block.compute_hash()
         self.chain.append(genesis_block)
-        self.save_to_disk() # Save genesis block immediately
 
     @property
     def last_block(self):
@@ -42,6 +37,32 @@ class Blockchain:
     def is_valid_proof(block, block_hash, difficulty):
         return (block_hash.startswith('0' * difficulty) and block_hash == block.compute_hash())
     
+    @staticmethod
+    def valid_block(block, block_hash):
+        return (block_hash == block.compute_hash())
+    
+    def load_from_dict(self, data: dict):
+        # Expect a dict with a 'chain' key containing a list of block dicts
+        if not isinstance(data, dict):
+            raise ValueError("data must be a dict")
+
+        if 'chain' not in data:
+            raise ValueError("data must contain a 'chain' list")
+
+        new_chain = []
+        for block_data in data['chain']:
+            # Reconstruct Block from dict (transactions may be dicts)
+            block = Block.from_dict(block_data)
+            new_chain.append(block)
+
+        # Replace local chain only after successful reconstruction
+        self.chain = new_chain
+    
+    def to_dict(self):
+        return {
+            "chain": [block.to_dict() for block in self.chain]
+        }
+    
     def add_block(self, block, proof):
         previous_hash = self.last_block.hash
 
@@ -53,7 +74,6 @@ class Blockchain:
         
         block.hash = proof
         self.chain.append(block)
-        self.save_to_disk() # Save blockchain after adding a new block
         return True
     
     def proof_of_work(self, block):
@@ -149,65 +169,9 @@ class Blockchain:
         proof = self.proof_of_work(new_block)
         self.add_block(new_block, proof)
         self.unconfirmed_transactions = []
-        
-        # Save blockchain to disk after mining
-        self.save_to_disk()
-        
+    
         return {
             'index': new_block.index,
             'mining_time': new_block.mining_time,
             'difficulty': new_block.difficulty
         }
-
-    def save_to_disk(self):
-        """Saves the current blockchain to a JSON file."""
-        blockchain_data = []
-        for block in self.chain:
-            # Convert Block object to a dictionary
-            block_data = {
-                "index": block.index,
-                "transactions": [tx.to_dict() if isinstance(tx, Transaction) else tx for tx in block.transactions],
-                "previous_hash": block.previous_hash,
-                "timestamp": block.timestamp,
-                "nonce": block.nonce,
-                "hash": block.hash,
-                "difficulty": block.difficulty,
-                "mining_time": block.mining_time
-            }
-            blockchain_data.append(block_data)
-        
-        with open(self.BLOCKCHAIN_FILE, 'w') as f:
-            json.dump(blockchain_data, f, indent=4)
-
-    def load_from_disk(self):
-        """Loads the blockchain from a JSON file."""
-        if not os.path.exists(self.BLOCKCHAIN_FILE):
-            return False
-        
-        with open(self.BLOCKCHAIN_FILE, 'r') as f:
-            blockchain_data = json.load(f)
-        
-        self.chain = []
-        for block_data in blockchain_data:
-            # Reconstruct Transaction objects from dictionaries
-            transactions = []
-            for tx_data in block_data["transactions"]:
-                # Keep transactions as dictionaries for compatibility with API and balance checks
-                transactions.append(tx_data)
-            
-            # Reconstruct Block object
-            block = Block(
-                index=block_data["index"],
-                transactions=transactions,
-                previous_hash=block_data["previous_hash"],
-                nonce=block_data["nonce"],
-                difficulty=block_data["difficulty"],
-                mining_time=block_data["mining_time"]
-            )
-            # Manually set timestamp and hash (which aren't set in constructor)
-            block.timestamp = block_data["timestamp"]
-            block.hash = block_data["hash"]
-            self.chain.append(block)
-        
-        print(f"Loaded {len(self.chain)} blocks from disk")
-        return True
