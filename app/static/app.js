@@ -42,6 +42,8 @@ document.getElementById('resetBtn').addEventListener('click', () => {
     }
 });
 
+document.getElementById('validateBtn').addEventListener('click', validateChain);
+
 // Create Wallet
 async function createWallet() {
     try {
@@ -436,4 +438,42 @@ function showToast(message, type = 'success') {
     setTimeout(() => {
         toast.classList.remove('show');
     }, 3000);
+}
+
+// Validate Blockchain
+async function validateChain() {
+    const validationStatus = document.getElementById('validationStatus');
+    validationStatus.textContent = 'Validating blockchain...';
+    validationStatus.className = 'status-message';
+
+    try {
+        const response = await fetch('/api/blockchain/validate');
+        const data = await response.json();
+
+        if (data.success) {
+            if (data.valid) {
+                validationStatus.textContent = `✅ Blockchain is valid! All ${data.total_blocks} blocks verified.`;
+                validationStatus.className = 'status-message status-success';
+                showToast('Blockchain validation passed! ✅');
+            } else {
+                const errorList = data.errors.join(', ');
+                validationStatus.textContent = `❌ Blockchain validation failed: ${errorList}`;
+                validationStatus.className = 'status-message status-error';
+                showToast('Blockchain validation failed! ❌', 'error');
+            }
+        } else {
+            validationStatus.textContent = `Error: ${data.error}`;
+            validationStatus.className = 'status-message status-error';
+        }
+
+        // Clear status after 10 seconds
+        setTimeout(() => {
+            validationStatus.textContent = '';
+            validationStatus.className = 'status-message';
+        }, 10000);
+    } catch (error) {
+        validationStatus.textContent = 'Error validating blockchain: ' + error.message;
+        validationStatus.className = 'status-message status-error';
+        showToast('Error: ' + error.message, 'error');
+    }
 }

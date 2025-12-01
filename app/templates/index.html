@@ -10,6 +10,7 @@
 
 <body>
     <button id="createWalletBtn" class="btn btn-primary">+ Create New Wallet</button>
+    <button id="resetBtn" class="btn" style="margin-left: 10px; background: #ff6b6b;">Reset Data</button>
 
     <div id="walletsList" class="wallets-list">
         <p class="empty-state">No wallets created yet. Click the button above to create one!</p>
@@ -109,7 +110,11 @@
 
     <!-- Blockchain Visualization Section -->
     <section class="card full-width">
-        <h2>🔗 Blockchain</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2>🔗 Blockchain</h2>
+            <button id="validateBtn" class="btn btn-primary">✓ Validate Chain</button>
+        </div>
+        <div id="validationStatus" class="status-message"></div>
         <div id="blockchain" class="blockchain-list"></div>
     </section>
 

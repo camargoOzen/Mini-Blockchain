@@ -131,6 +131,77 @@ class Blockchain:
         self.unconfirmed_transactions.append(transaction)
         return True
 
+    def validate_chain(self):
+        """Validate the integrity of the entire blockchain.
+        
+        Returns:
+            dict with 'valid' boolean and 'errors' list describing any issues found
+        """
+        errors = []
+        
+        # Check if chain exists and has at least genesis block
+        if not self.chain or len(self.chain) == 0:
+            errors.append("Blockchain is empty")
+            return {'valid': False, 'errors': errors}
+        
+        # Validate genesis block
+        genesis = self.chain[0]
+        if genesis.index != 0:
+            errors.append(f"Genesis block has invalid index: {genesis.index}")
+        if genesis.previous_hash != "0":
+            errors.append(f"Genesis block has invalid previous_hash: {genesis.previous_hash}")
+        
+        # Validate genesis block hash
+        if hasattr(genesis, 'hash'):
+            computed_genesis_hash = genesis.compute_hash()
+            if genesis.hash != computed_genesis_hash:
+                errors.append(f"Genesis block hash mismatch. Expected: {computed_genesis_hash}, Got: {genesis.hash}")
+        
+        # Validate each subsequent block
+        for i in range(1, len(self.chain)):
+            current_block = self.chain[i]
+            previous_block = self.chain[i - 1]
+            
+            # Check if block has a hash attribute
+            if not hasattr(current_block, 'hash'):
+                errors.append(f"Block #{current_block.index} is missing hash attribute")
+                continue
+            
+            # Check if previous block has a hash
+            if not hasattr(previous_block, 'hash'):
+                errors.append(f"Block #{previous_block.index} is missing hash attribute")
+                continue
+            
+            # Verify the previous_hash linkage
+            if current_block.previous_hash != previous_block.hash:
+                errors.append(
+                    f"Block #{current_block.index} has invalid previous_hash. "
+                    f"Expected: {previous_block.hash}, Got: {current_block.previous_hash}"
+                )
+            
+            # Verify the block's hash matches its computed hash
+            computed_hash = current_block.compute_hash()
+            if current_block.hash != computed_hash:
+                errors.append(
+                    f"Block #{current_block.index} hash mismatch. "
+                    f"Expected: {computed_hash}, Got: {current_block.hash}"
+                )
+            
+            # Verify proof of work (hash starts with required zeros)
+            if hasattr(current_block, 'difficulty') and current_block.difficulty:
+                difficulty = current_block.difficulty
+                if not current_block.hash.startswith('0' * difficulty):
+                    errors.append(
+                        f"Block #{current_block.index} does not meet difficulty requirement. "
+                        f"Difficulty: {difficulty}, Hash: {current_block.hash}"
+                    )
+        
+        return {
+            'valid': len(errors) == 0,
+            'errors': errors,
+            'total_blocks': len(self.chain)
+        }
+
     def mine(self, miner_address=None, mining_reward=50):
         """Mine pending transactions into a new block.
         

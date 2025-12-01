@@ -339,3 +339,19 @@ def get_mining_stats():
         
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+@api_bp.route("/blockchain/validate", methods=["GET"])
+def validate_blockchain():
+    """Validate the integrity of the blockchain."""
+    try:
+        validation_result = blockchain.validate_chain()
+        
+        return jsonify({
+            "success": True,
+            "valid": validation_result['valid'],
+            "total_blocks": validation_result['total_blocks'],
+            "errors": validation_result['errors']
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
