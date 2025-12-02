@@ -1108,3 +1108,4 @@ Mini-Blockchain sirve como plataforma educativa y base para experimentación con
 **Repositorio**: https://github.com/camargoOzen/Mini-Blockchain  
 **Autor**: Juan Camargo  
 **Versión**: 1.0
+**Nota**: Este proyecto y su documentación fueron desarrollados con el apoyo de agentes IA GeminiPro y Claude Sonnet 4.5
